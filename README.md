@@ -62,6 +62,17 @@ cd SkyReels-V2
 pip install -r requirements.txt
 ```
 
+#### GUI Launcher
+After installing the dependencies you can launch a lightweight Tkinter
+interface for video generation:
+
+```shell
+python gui/launcher.py
+```
+
+The GUI lets you choose a model, enter prompts and run either
+`generate_video.py` or `generate_video_df.py` without using the command line.
+
 #### Model Download
 You can download our models from Hugging Face:
 <table>
