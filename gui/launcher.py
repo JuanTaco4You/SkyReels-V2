@@ -47,7 +47,7 @@ def install_deps(output):
 
 
 def run_generation(script_var, model_var, prompt_var, image_var, res_var,
-                   frames_var, guidance_var, output):
+                   frames_var, guidance_var, outdir_var, output):
     script_name = SCRIPTS[script_var.get()]
     cmd = [sys.executable, os.path.join(PROJECT_ROOT, script_name)]
     if model_var.get():
@@ -58,6 +58,8 @@ def run_generation(script_var, model_var, prompt_var, image_var, res_var,
         cmd.extend(['--num_frames', frames_var.get()])
     if guidance_var.get():
         cmd.extend(['--guidance_scale', guidance_var.get()])
+    if outdir_var.get():
+        cmd.extend(['--outdir', outdir_var.get()])
     if image_var.get():
         cmd.extend(['--image', image_var.get()])
     if prompt_var.get():
@@ -73,6 +75,12 @@ def browse_image(var):
         var.set(path)
 
 
+def browse_output(var):
+    path = filedialog.askdirectory()
+    if path:
+        var.set(path)
+
+
 def main():
     root = tk.Tk()
     root.title('SkyReels Launcher')
@@ -84,6 +92,7 @@ def main():
     res_var = tk.StringVar(value='540P')
     frames_var = tk.StringVar(value='97')
     guidance_var = tk.StringVar(value='6.0')
+    outdir_var = tk.StringVar(value='video_out')
 
     ttk.Label(root, text='Script').grid(row=0, column=0, sticky='w')
     ttk.Combobox(root, textvariable=script_var, values=list(SCRIPTS.keys()), width=30).grid(row=0, column=1, sticky='ew')
@@ -108,12 +117,17 @@ def main():
     ttk.Label(root, text='Guidance').grid(row=6, column=0, sticky='w')
     tk.Entry(root, textvariable=guidance_var, width=10).grid(row=6, column=1, sticky='w')
 
-    output = scrolledtext.ScrolledText(root, width=80, height=20)
-    output.grid(row=8, column=0, columnspan=3, pady=5)
+    ttk.Label(root, text='Output Dir').grid(row=7, column=0, sticky='w')
+    out_entry = tk.Entry(root, textvariable=outdir_var, width=50)
+    out_entry.grid(row=7, column=1, sticky='w')
+    ttk.Button(root, text='Browse', command=lambda: browse_output(outdir_var)).grid(row=7, column=2, sticky='w')
 
-    ttk.Button(root, text='Install Dependencies', command=lambda: install_deps(output)).grid(row=7, column=0, pady=5)
-    ttk.Button(root, text='Run', command=lambda: run_generation(script_var, model_var, prompt_var, image_var, res_var, frames_var, guidance_var, output)).grid(row=7, column=1, pady=5)
-    ttk.Button(root, text='Quit', command=root.destroy).grid(row=7, column=2, pady=5)
+    output = scrolledtext.ScrolledText(root, width=80, height=20)
+    output.grid(row=9, column=0, columnspan=3, pady=5)
+
+    ttk.Button(root, text='Install Dependencies', command=lambda: install_deps(output)).grid(row=8, column=0, pady=5)
+    ttk.Button(root, text='Run', command=lambda: run_generation(script_var, model_var, prompt_var, image_var, res_var, frames_var, guidance_var, outdir_var, output)).grid(row=8, column=1, pady=5)
+    ttk.Button(root, text='Quit', command=root.destroy).grid(row=8, column=2, pady=5)
 
     root.mainloop()
 
