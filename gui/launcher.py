@@ -46,7 +46,7 @@ def install_deps(output):
     threaded(cmd, output)
 
 
-def run_generation(script_var, model_var, prompt_var, image_var, res_var,
+def run_generation(script_var, model_var, prompt_widget, image_var, res_var,
                    frames_var, guidance_var, outdir_var, output):
     script_name = SCRIPTS[script_var.get()]
     cmd = [sys.executable, os.path.join(PROJECT_ROOT, script_name)]
@@ -62,8 +62,9 @@ def run_generation(script_var, model_var, prompt_var, image_var, res_var,
         cmd.extend(['--outdir', outdir_var.get()])
     if image_var.get():
         cmd.extend(['--image', image_var.get()])
-    if prompt_var.get():
-        cmd.extend(['--prompt', prompt_var.get()])
+    prompt_text = prompt_widget.get("1.0", "end").strip()
+    if prompt_text:
+        cmd.extend(['--prompt', prompt_text])
 
     output.delete(1.0, tk.END)
     threaded(cmd, output)
@@ -87,7 +88,6 @@ def main():
 
     script_var = tk.StringVar(value='Standard Generation')
     model_var = tk.StringVar(value=MODEL_OPTIONS[0])
-    prompt_var = tk.StringVar()
     image_var = tk.StringVar()
     res_var = tk.StringVar(value='540P')
     frames_var = tk.StringVar(value='97')
@@ -100,8 +100,9 @@ def main():
     ttk.Label(root, text='Model').grid(row=1, column=0, sticky='w')
     ttk.Combobox(root, textvariable=model_var, values=MODEL_OPTIONS, width=60).grid(row=1, column=1, sticky='ew')
 
-    ttk.Label(root, text='Prompt').grid(row=2, column=0, sticky='w')
-    tk.Entry(root, textvariable=prompt_var, width=60).grid(row=2, column=1, sticky='ew')
+    ttk.Label(root, text='Prompt').grid(row=2, column=0, sticky='nw')
+    prompt_widget = scrolledtext.ScrolledText(root, width=60, height=4)
+    prompt_widget.grid(row=2, column=1, sticky='ew')
 
     ttk.Label(root, text='Image').grid(row=3, column=0, sticky='w')
     img_entry = tk.Entry(root, textvariable=image_var, width=50)
@@ -126,7 +127,7 @@ def main():
     output.grid(row=9, column=0, columnspan=3, pady=5)
 
     ttk.Button(root, text='Install Dependencies', command=lambda: install_deps(output)).grid(row=8, column=0, pady=5)
-    ttk.Button(root, text='Run', command=lambda: run_generation(script_var, model_var, prompt_var, image_var, res_var, frames_var, guidance_var, outdir_var, output)).grid(row=8, column=1, pady=5)
+    ttk.Button(root, text='Run', command=lambda: run_generation(script_var, model_var, prompt_widget, image_var, res_var, frames_var, guidance_var, outdir_var, output)).grid(row=8, column=1, pady=5)
     ttk.Button(root, text='Quit', command=root.destroy).grid(row=8, column=2, pady=5)
 
     root.mainloop()
