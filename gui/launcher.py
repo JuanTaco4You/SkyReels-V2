@@ -5,31 +5,6 @@ import threading
 import tkinter as tk
 from tkinter import ttk, filedialog, scrolledtext
 
-
-def apply_dark_mode(root, widgets, enabled):
-    """Apply a basic dark or light theme to the given widgets."""
-    style = ttk.Style()
-    if enabled:
-        bg = '#2b2b2b'
-        fg = '#ffffff'
-        style.theme_use('clam')
-        style.configure('.', background=bg, foreground=fg)
-        style.configure('TLabel', background=bg, foreground=fg)
-        style.configure('TButton', background='#444444', foreground=fg)
-        style.configure('TCombobox', fieldbackground='#3c3c3c', background='#444444', foreground=fg)
-        root.configure(bg=bg)
-        for w in widgets:
-            w.configure(bg='#3c3c3c', fg=fg, insertbackground=fg)
-    else:
-        style.theme_use('default')
-        root.configure(bg='SystemButtonFace')
-        style.configure('.', background='SystemButtonFace', foreground='black')
-        style.configure('TLabel', background='SystemButtonFace', foreground='black')
-        style.configure('TButton', background='SystemButtonFace', foreground='black')
-        style.configure('TCombobox', fieldbackground='white', background='SystemButtonFace', foreground='black')
-        for w in widgets:
-            w.configure(bg='white', fg='black', insertbackground='black')
-
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
 MODEL_OPTIONS = [
@@ -118,7 +93,6 @@ def main():
     frames_var = tk.StringVar(value='97')
     guidance_var = tk.StringVar(value='6.0')
     outdir_var = tk.StringVar(value='video_out')
-    dark_mode_var = tk.BooleanVar(value=False)
 
     ttk.Label(root, text='Script').grid(row=0, column=0, sticky='w')
     ttk.Combobox(root, textvariable=script_var, values=list(SCRIPTS.keys()), width=30).grid(row=0, column=1, sticky='ew')
@@ -139,12 +113,10 @@ def main():
     ttk.Combobox(root, textvariable=res_var, values=['540P', '720P'], width=10).grid(row=4, column=1, sticky='w')
 
     ttk.Label(root, text='Frames').grid(row=5, column=0, sticky='w')
-    frames_entry = tk.Entry(root, textvariable=frames_var, width=10)
-    frames_entry.grid(row=5, column=1, sticky='w')
+    tk.Entry(root, textvariable=frames_var, width=10).grid(row=5, column=1, sticky='w')
 
     ttk.Label(root, text='Guidance').grid(row=6, column=0, sticky='w')
-    guidance_entry = tk.Entry(root, textvariable=guidance_var, width=10)
-    guidance_entry.grid(row=6, column=1, sticky='w')
+    tk.Entry(root, textvariable=guidance_var, width=10).grid(row=6, column=1, sticky='w')
 
     ttk.Label(root, text='Output Dir').grid(row=7, column=0, sticky='w')
     out_entry = tk.Entry(root, textvariable=outdir_var, width=50)
@@ -152,14 +124,11 @@ def main():
     ttk.Button(root, text='Browse', command=lambda: browse_output(outdir_var)).grid(row=7, column=2, sticky='w')
 
     output = scrolledtext.ScrolledText(root, width=80, height=20)
-    output.grid(row=9, column=0, columnspan=4, pady=5)
+    output.grid(row=9, column=0, columnspan=3, pady=5)
 
     ttk.Button(root, text='Install Dependencies', command=lambda: install_deps(output)).grid(row=8, column=0, pady=5)
     ttk.Button(root, text='Run', command=lambda: run_generation(script_var, model_var, prompt_widget, image_var, res_var, frames_var, guidance_var, outdir_var, output)).grid(row=8, column=1, pady=5)
     ttk.Button(root, text='Quit', command=root.destroy).grid(row=8, column=2, pady=5)
-    ttk.Checkbutton(root, text='Dark Mode', variable=dark_mode_var, command=lambda: apply_dark_mode(root, [img_entry, frames_entry, guidance_entry, out_entry, prompt_widget, output], dark_mode_var.get())).grid(row=8, column=3, pady=5)
-
-    apply_dark_mode(root, [img_entry, frames_entry, guidance_entry, out_entry, prompt_widget, output], dark_mode_var.get())
 
     root.mainloop()
 
