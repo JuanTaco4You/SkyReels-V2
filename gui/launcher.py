@@ -82,21 +82,16 @@ def browse_output(var):
         var.set(path)
 
 
-def apply_theme(root, dark: bool):
-    """Apply light or dark theme to Tkinter widgets."""
-    style = ttk.Style(root)
-    if dark:
-        style.theme_use('clam')
-        bg = '#333333'
-        fg = '#ffffff'
-        root.configure(background=bg)
-        style.configure('.', background=bg, foreground=fg)
-        style.configure('TEntry', fieldbackground=bg)
-        style.configure('TCombobox', fieldbackground=bg)
-        # Text widgets need explicit config
-        for widget in root.winfo_children():
-            if isinstance(widget, (tk.Entry, tk.Text, scrolledtext.ScrolledText)):
-                widget.configure(background=bg, foreground=fg, insertbackground=fg)
+def apply_theme(root, is_dark):
+    if is_dark:
+        bg_color = '#333333'  # Dark gray
+        fg_color = '#ffffff'  # White
+    else:
+        bg_color = '#f0f0f0'  # Light gray
+        fg_color = '#000000'  # Black
+        
+    root.configure(background=bg_color)
+    # Update any other color configurations using bg_color and fg_color
     else:
         style.theme_use('default')
         root.configure(background='SystemButtonFace')
