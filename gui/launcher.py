@@ -82,6 +82,32 @@ def browse_output(var):
         var.set(path)
 
 
+def apply_theme(root, dark: bool):
+    """Apply light or dark theme to Tkinter widgets."""
+    style = ttk.Style(root)
+    if dark:
+        style.theme_use('clam')
+        bg = '#333333'
+        fg = '#ffffff'
+        root.configure(background=bg)
+        style.configure('.', background=bg, foreground=fg)
+        style.configure('TEntry', fieldbackground=bg)
+        style.configure('TCombobox', fieldbackground=bg)
+        # Text widgets need explicit config
+        for widget in root.winfo_children():
+            if isinstance(widget, (tk.Entry, tk.Text, scrolledtext.ScrolledText)):
+                widget.configure(background=bg, foreground=fg, insertbackground=fg)
+    else:
+        style.theme_use('default')
+        root.configure(background='SystemButtonFace')
+        style.configure('.', background='SystemButtonFace', foreground='SystemButtonText')
+        style.configure('TEntry', fieldbackground='white')
+        style.configure('TCombobox', fieldbackground='white')
+        for widget in root.winfo_children():
+            if isinstance(widget, (tk.Entry, tk.Text, scrolledtext.ScrolledText)):
+                widget.configure(background='white', foreground='black', insertbackground='black')
+
+
 def main():
     root = tk.Tk()
     root.title('SkyReels Launcher')
@@ -93,9 +119,11 @@ def main():
     frames_var = tk.StringVar(value='97')
     guidance_var = tk.StringVar(value='6.0')
     outdir_var = tk.StringVar(value='video_out')
+    dark_var = tk.BooleanVar(value=False)
 
     ttk.Label(root, text='Script').grid(row=0, column=0, sticky='w')
     ttk.Combobox(root, textvariable=script_var, values=list(SCRIPTS.keys()), width=30).grid(row=0, column=1, sticky='ew')
+    ttk.Checkbutton(root, text='Dark Mode', variable=dark_var, command=lambda: apply_theme(root, dark_var.get())).grid(row=0, column=2, sticky='w')
 
     ttk.Label(root, text='Model').grid(row=1, column=0, sticky='w')
     ttk.Combobox(root, textvariable=model_var, values=MODEL_OPTIONS, width=60).grid(row=1, column=1, sticky='ew')
@@ -130,6 +158,7 @@ def main():
     ttk.Button(root, text='Run', command=lambda: run_generation(script_var, model_var, prompt_widget, image_var, res_var, frames_var, guidance_var, outdir_var, output)).grid(row=8, column=1, pady=5)
     ttk.Button(root, text='Quit', command=root.destroy).grid(row=8, column=2, pady=5)
 
+    apply_theme(root, dark_var.get())
     root.mainloop()
 
 
