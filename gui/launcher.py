@@ -83,6 +83,7 @@ def browse_output(var):
 
 
 def apply_theme(root, is_dark):
+    style = ttk.Style(root)
     if is_dark:
         bg_color = '#333333'  # Dark gray
         fg_color = '#ffffff'  # White
