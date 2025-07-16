@@ -86,21 +86,18 @@ def apply_theme(root, is_dark):
     if is_dark:
         bg_color = '#333333'  # Dark gray
         fg_color = '#ffffff'  # White
+        root.configure(background=bg_color)
+        # Add any dark mode style changes here
     else:
         bg_color = '#f0f0f0'  # Light gray
         fg_color = '#000000'  # Black
-        
-    root.configure(background=bg_color)
-    # Update any other color configurations using bg_color and fg_color
-    else:
+        root.configure(background=bg_color)
+        # Add any light mode style changes here
         style.theme_use('default')
         root.configure(background='SystemButtonFace')
         style.configure('.', background='SystemButtonFace', foreground='SystemButtonText')
         style.configure('TEntry', fieldbackground='white')
         style.configure('TCombobox', fieldbackground='white')
-        for widget in root.winfo_children():
-            if isinstance(widget, (tk.Entry, tk.Text, scrolledtext.ScrolledText)):
-                widget.configure(background='white', foreground='black', insertbackground='black')
 
 
 def main():
