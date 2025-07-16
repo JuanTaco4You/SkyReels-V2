@@ -89,20 +89,21 @@ def apply_theme(root, dark: bool):
         style.theme_use('clam')
         bg = '#333333'
         fg = '#ffffff'
+        entry_bg = '#4d4d4d'
         root.configure(background=bg)
         style.configure('.', background=bg, foreground=fg)
-        style.configure('TEntry', fieldbackground=bg)
-        style.configure('TCombobox', fieldbackground=bg)
-        # Text widgets need explicit config
+        style.configure('TEntry', fieldbackground=entry_bg, foreground=fg)
+        style.configure('TCombobox', fieldbackground=entry_bg, foreground=fg)
         for widget in root.winfo_children():
             if isinstance(widget, (tk.Entry, tk.Text, scrolledtext.ScrolledText)):
-                widget.configure(background=bg, foreground=fg, insertbackground=fg)
+                widget.configure(background=entry_bg, foreground=fg, insertbackground=fg)
     else:
-        style.theme_use('default')
-        root.configure(background='SystemButtonFace')
-        style.configure('.', background='SystemButtonFace', foreground='SystemButtonText')
-        style.configure('TEntry', fieldbackground='white')
-        style.configure('TCombobox', fieldbackground='white')
+        style.theme_use(getattr(root, '_orig_theme', 'default'))
+        default_bg = getattr(root, '_default_bg', style.lookup('TFrame', 'background'))
+        root.configure(background=default_bg)
+        style.configure('.', background='', foreground='')
+        style.configure('TEntry', fieldbackground='', foreground='')
+        style.configure('TCombobox', fieldbackground='', foreground='')
         for widget in root.winfo_children():
             if isinstance(widget, (tk.Entry, tk.Text, scrolledtext.ScrolledText)):
                 widget.configure(background='white', foreground='black', insertbackground='black')
@@ -111,6 +112,9 @@ def apply_theme(root, dark: bool):
 def main():
     root = tk.Tk()
     root.title('SkyReels Launcher')
+    style = ttk.Style(root)
+    root._orig_theme = style.theme_use()
+    root._default_bg = root.cget('background')
 
     script_var = tk.StringVar(value='Standard Generation')
     model_var = tk.StringVar(value=MODEL_OPTIONS[0])
