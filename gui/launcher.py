@@ -82,24 +82,6 @@ def browse_output(var):
         var.set(path)
 
 
-def apply_theme(root, is_dark):
-    if is_dark:
-        bg_color = '#333333'  # Dark gray
-        fg_color = '#ffffff'  # White
-        root.configure(background=bg_color)
-        # Add any dark mode style changes here
-    else:
-        bg_color = '#f0f0f0'  # Light gray
-        fg_color = '#000000'  # Black
-        root.configure(background=bg_color)
-        # Add any light mode style changes here
-        style.theme_use('default')
-        root.configure(background='SystemButtonFace')
-        style.configure('.', background='SystemButtonFace', foreground='SystemButtonText')
-        style.configure('TEntry', fieldbackground='white')
-        style.configure('TCombobox', fieldbackground='white')
-
-
 def main():
     root = tk.Tk()
     root.title('SkyReels Launcher')
@@ -111,11 +93,9 @@ def main():
     frames_var = tk.StringVar(value='97')
     guidance_var = tk.StringVar(value='6.0')
     outdir_var = tk.StringVar(value='video_out')
-    dark_var = tk.BooleanVar(value=False)
 
     ttk.Label(root, text='Script').grid(row=0, column=0, sticky='w')
     ttk.Combobox(root, textvariable=script_var, values=list(SCRIPTS.keys()), width=30).grid(row=0, column=1, sticky='ew')
-    ttk.Checkbutton(root, text='Dark Mode', variable=dark_var, command=lambda: apply_theme(root, dark_var.get())).grid(row=0, column=2, sticky='w')
 
     ttk.Label(root, text='Model').grid(row=1, column=0, sticky='w')
     ttk.Combobox(root, textvariable=model_var, values=MODEL_OPTIONS, width=60).grid(row=1, column=1, sticky='ew')
@@ -150,7 +130,6 @@ def main():
     ttk.Button(root, text='Run', command=lambda: run_generation(script_var, model_var, prompt_widget, image_var, res_var, frames_var, guidance_var, outdir_var, output)).grid(row=8, column=1, pady=5)
     ttk.Button(root, text='Quit', command=root.destroy).grid(row=8, column=2, pady=5)
 
-    apply_theme(root, dark_var.get())
     root.mainloop()
 
 
