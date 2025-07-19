@@ -75,6 +75,7 @@ The GUI lets you choose a model, enter prompts and run either
 You can also set a custom save location using the **Output Dir** field.
 A **Dark Mode** toggle is available to switch the interface to darker colors.
 An optional **Prompt Enhancer** checkbox lets you automatically expand short prompts using Qwen2.5 before generation.
+You can also click **Enhance Prompt** to preview the expanded text before running a video generation.
 
 #### Model Download
 You can download our models from Hugging Face:
