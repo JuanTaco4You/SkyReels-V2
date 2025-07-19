@@ -74,6 +74,7 @@ The GUI lets you choose a model, enter prompts and run either
 `generate_video.py` or `generate_video_df.py` without using the command line.
 You can also set a custom save location using the **Output Dir** field.
 A **Dark Mode** toggle is available to switch the interface to darker colors.
+An optional **Prompt Enhancer** checkbox lets you automatically expand short prompts using Qwen2.5 before generation.
 
 #### Model Download
 You can download our models from Hugging Face:
