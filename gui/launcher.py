@@ -32,10 +32,16 @@ def run_command(cmd, text_widget):
         text=True,
     )
     for line in process.stdout:
-        text_widget.insert(tk.END, line)
-        text_widget.see(tk.END)
+        try:
+            text_widget.insert(tk.END, line)
+            text_widget.see(tk.END)
+        except tk.TclError:
+            break
     process.wait()
-    text_widget.insert(tk.END, f"\nFinished with exit code {process.returncode}\n")
+    try:
+        text_widget.insert(tk.END, f"\nFinished with exit code {process.returncode}\n")
+    except tk.TclError:
+        pass
 
 
 def threaded(cmd, text_widget):
