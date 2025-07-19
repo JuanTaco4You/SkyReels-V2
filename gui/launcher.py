@@ -75,6 +75,42 @@ def run_generation(
     threaded(cmd, output)
 
 
+def run_prompt_enhancer(prompt_widget, output_widget):
+    """Run the standalone prompt enhancer script with the given prompt."""
+    prompt_text = prompt_widget.get("1.0", "end").strip()
+    if not prompt_text:
+        output_widget.insert(tk.END, "Prompt is empty\n")
+        output_widget.see(tk.END)
+        return
+
+    script_path = os.path.join(
+        PROJECT_ROOT, "skyreels_v2_infer", "pipelines", "prompt_enhancer.py"
+    )
+    cmd = [sys.executable, script_path, "--prompt", prompt_text]
+    output_widget.delete(1.0, tk.END)
+    threaded(cmd, output_widget)
+
+
+def open_prompt_enhancer(prompt_widget):
+    """Open a simple window to run the prompt enhancer separately."""
+    win = tk.Toplevel()
+    win.title("Prompt Enhancer")
+
+    input_box = scrolledtext.ScrolledText(win, width=60, height=4)
+    input_box.pack(padx=5, pady=5, fill="both")
+    input_box.insert(tk.END, prompt_widget.get("1.0", "end").strip())
+
+    output_box = scrolledtext.ScrolledText(win, width=80, height=10)
+    output_box.pack(padx=5, pady=5, fill="both")
+
+    ttk.Button(
+        win,
+        text="Start",
+        command=lambda: run_prompt_enhancer(input_box, output_box),
+    ).pack(pady=5)
+
+
+
 def browse_image(var):
     path = filedialog.askopenfilename()
     if path:
@@ -135,7 +171,7 @@ def main():
         row=8, column=0, columnspan=2, sticky="w"
     )
     output = scrolledtext.ScrolledText(root, width=80, height=20)
-    output.grid(row=10, column=0, columnspan=3, pady=5)
+    output.grid(row=10, column=0, columnspan=4, pady=5)
 
     ttk.Button(root, text="Install Dependencies", command=lambda: install_deps(output)).grid(row=9, column=0, pady=5)
     ttk.Button(
@@ -154,7 +190,8 @@ def main():
             output,
         ),
     ).grid(row=9, column=1, pady=5)
-    ttk.Button(root, text="Quit", command=root.destroy).grid(row=9, column=2, pady=5)
+    ttk.Button(root, text="Prompt Enhancer", command=lambda: open_prompt_enhancer(prompt_widget)).grid(row=9, column=2, pady=5)
+    ttk.Button(root, text="Quit", command=root.destroy).grid(row=9, column=3, pady=5)
 
     root.mainloop()
 
