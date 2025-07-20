@@ -58,13 +58,15 @@ The demos above showcase 30-second videos generated using our SkyReels-V2 Diffus
 # clone the repository.
 git clone https://github.com/JuanTaco4You/SkyReels-V2
 cd SkyReels-V2
-# Install dependencies. Test environment uses Python 3.10.12.
+# Install dependencies if they are not already available. Test environment uses Python 3.10.12.
 pip install -r requirements.txt
 ```
 
+If the required packages are already installed, you can skip the step above.
+
 #### GUI Launcher
-After installing the dependencies you can launch a lightweight Tkinter
-interface for video generation:
+Once the required dependencies are installed (or if they were already present),
+you can launch a lightweight Tkinter interface for video generation:
 
 ```shell
 python3 gui/launcher.py

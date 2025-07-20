@@ -493,6 +493,17 @@ def main():
     output = scrolledtext.ScrolledText(root, width=80, height=20)
     output.grid(row=12, column=0, columnspan=4, pady=5)
 
+    # Determine if required packages are already installed so the buttons can be
+    # enabled on launch without forcing the user to click "Install Dependencies"
+    try:
+        import diffusers  # noqa: F401
+        import decord  # noqa: F401
+        packages_installed = True
+    except Exception:
+        packages_installed = False
+
+    button_state = "normal" if packages_installed else "disabled"
+
     run_button = ttk.Button(
         root,
         text="Run",
@@ -524,7 +535,7 @@ def main():
             causal_block_size_var,
             output,
         ),
-        state="disabled",
+        state=button_state,
     )
     run_button.grid(row=11, column=1, pady=5)
 
@@ -532,7 +543,7 @@ def main():
         root,
         text="Prompt Enhancer",
         command=lambda: open_prompt_enhancer(prompt_widget),
-        state="disabled",
+        state=button_state,
     )
     enhancer_button.grid(row=11, column=2, pady=5)
 
@@ -540,7 +551,7 @@ def main():
         root,
         text="Captioner",
         command=open_captioner,
-        state="disabled",
+        state=button_state,
     )
     caption_button.grid(row=11, column=3, pady=5)
 
