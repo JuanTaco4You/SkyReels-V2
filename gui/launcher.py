@@ -43,13 +43,6 @@ def threaded(cmd, text_widget):
     thread.start()
 
 
-def check_deps():
-    try:
-        import torch
-        import transformers
-        return True
-    except ImportError:
-        return False
 
 def install_deps(output, run_button, enhancer_button):
     output.insert(tk.END, "Installing dependencies...\n")
@@ -250,8 +243,7 @@ def main():
     output = scrolledtext.ScrolledText(root, width=80, height=20)
     output.grid(row=10, column=0, columnspan=4, pady=5)
 
-    ttk.Button(root, text="Install Dependencies", command=lambda: install_deps(output)).grid(row=9, column=0, pady=5)
-    ttk.Button(
+    run_button = ttk.Button(
         root,
         text="Run",
         command=lambda: run_generation(
@@ -267,8 +259,24 @@ def main():
             prompt_enhancer_model_size_var,
             output,
         ),
-    ).grid(row=9, column=1, pady=5)
-    ttk.Button(root, text="Prompt Enhancer", command=lambda: open_prompt_enhancer(prompt_widget)).grid(row=9, column=2, pady=5)
+        state="disabled",
+    )
+    run_button.grid(row=9, column=1, pady=5)
+
+    enhancer_button = ttk.Button(
+        root,
+        text="Prompt Enhancer",
+        command=lambda: open_prompt_enhancer(prompt_widget),
+        state="disabled",
+    )
+    enhancer_button.grid(row=9, column=2, pady=5)
+
+    ttk.Button(
+        root,
+        text="Install Dependencies",
+        command=lambda: install_deps(output, run_button, enhancer_button),
+    ).grid(row=9, column=0, pady=5)
+
     ttk.Button(root, text="Quit", command=root.destroy).grid(row=9, column=3, pady=5)
 
     root.mainloop()
