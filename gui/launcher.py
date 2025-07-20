@@ -15,6 +15,15 @@ MODEL_OPTIONS = [
     "Skywork/SkyReels-V2-I2V-14B-540P",
     "Skywork/SkyReels-V2-I2V-14B-720P",
     "Skywork/SkyReels-V2-DF-14B-720P",
+    "Skywork/SkyReels-V2-DF-5B-540P",
+    "Skywork/SkyReels-V2-DF-5B-720P",
+    "Skywork/SkyReels-V2-T2V-5B-540P",
+    "Skywork/SkyReels-V2-T2V-5B-720P",
+    "Skywork/SkyReels-V2-I2V-5B-540P",
+    "Skywork/SkyReels-V2-I2V-5B-720P",
+    "Skywork/SkyReels-V2-CD-5B-540P",
+    "Skywork/SkyReels-V2-CD-5B-720P",
+    "Skywork/SkyReels-V2-CD-14B-720P",
 ]
 
 SCRIPTS = {
@@ -23,23 +32,25 @@ SCRIPTS = {
 }
 
 
-def run_command(cmd, text_widget):
-    process = subprocess.Popen(
+def run_command(app, cmd, text_widget):
+    app.process = subprocess.Popen(
         cmd,
         cwd=PROJECT_ROOT,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
     )
-    for line in process.stdout:
+    for line in app.process.stdout:
         text_widget.insert(tk.END, line)
         text_widget.see(tk.END)
-    process.wait()
-    text_widget.insert(tk.END, f"\nFinished with exit code {process.returncode}\n")
+    app.process.wait()
+    text_widget.insert(tk.END, f"\nFinished with exit code {app.process.returncode}\n")
+    app.cancel_button.config(state="disabled")
+    app.run_button.config(state="normal")
 
 
-def threaded(cmd, text_widget):
-    thread = threading.Thread(target=run_command, args=(cmd, text_widget))
+def threaded(app, cmd, text_widget):
+    thread = threading.Thread(target=run_command, args=(app, cmd, text_widget))
     thread.start()
 
 
@@ -48,6 +59,12 @@ def install_deps(output, run_button, enhancer_button, caption_button):
     output.see(tk.END)
 
     def install_and_update_ui():
+        try:
+            subprocess.check_call([sys.executable, "-m", "pip", "--version"])
+        except subprocess.CalledProcessError:
+            output.insert(tk.END, "\nError: pip is not installed. Please install pip and try again.\n")
+            return
+
         cmd = [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"]
         process = subprocess.Popen(
             cmd,
@@ -66,7 +83,11 @@ def install_deps(output, run_button, enhancer_button, caption_button):
             enhancer_button.config(state="normal")
             caption_button.config(state="normal")
         else:
-            output.insert(tk.END, f"\nFailed to install dependencies. Exit code: {process.returncode}\n")
+            output.insert(
+                tk.END,
+                f"\nFailed to install dependencies. Exit code: {process.returncode}\n"
+                "Please check the console for more information.\n",
+            )
 
     thread = threading.Thread(target=install_and_update_ui)
     thread.start()
@@ -155,7 +176,7 @@ def run_generation(
     threaded(cmd, output)
 
 
-def run_prompt_enhancer(prompt_widget, output_widget, model_size_var, status_var):
+def run_prompt_enhancer(prompt_widget, output_widget, model_size_var, status_var, max_length_var):
     """Run the standalone prompt enhancer script with the given prompt."""
     prompt_text = prompt_widget.get("1.0", "end").strip()
     if not prompt_text:
@@ -166,6 +187,8 @@ def run_prompt_enhancer(prompt_widget, output_widget, model_size_var, status_var
     model_size = model_size_var.get()
     script_path = os.path.join(PROJECT_ROOT, "skyreels_v2_infer", "pipelines", "prompt_enhancer.py")
     cmd = [sys.executable, script_path, "--prompt", prompt_text, "--model_size", model_size]
+    if max_length_var.get():
+        cmd.extend(["--max_length", max_length_var.get()])
     output_widget.delete(1.0, tk.END)
 
     def update_status(message):
@@ -199,6 +222,7 @@ def open_prompt_enhancer(prompt_widget):
 
     model_size_var = tk.StringVar(value="small")
     status_var = tk.StringVar(value="Idle")
+    max_length_var = tk.StringVar(value="256")
 
     main_frame = ttk.Frame(win)
     main_frame.pack(padx=10, pady=10, fill="both", expand=True)
@@ -215,6 +239,10 @@ def open_prompt_enhancer(prompt_widget):
     model_menu = ttk.Combobox(top_frame, textvariable=model_size_var, values=["small", "large"], width=10)
     model_menu.pack(side="left")
 
+    ttk.Label(top_frame, text="Max Length:").pack(side="left", padx=(10, 5))
+    max_length_entry = tk.Entry(top_frame, textvariable=max_length_var, width=10)
+    max_length_entry.pack(side="left")
+
     output_box = scrolledtext.ScrolledText(main_frame, width=80, height=10)
     output_box.pack(pady=5, fill="both", expand=True)
 
@@ -224,7 +252,7 @@ def open_prompt_enhancer(prompt_widget):
     ttk.Button(
         main_frame,
         text="Enhance Prompt",
-        command=lambda: run_prompt_enhancer(input_box, output_box, model_size_var, status_var),
+        command=lambda: run_prompt_enhancer(input_box, output_box, model_size_var, status_var, max_length_var),
     ).pack(pady=5)
 
 
@@ -352,217 +380,284 @@ def browse_output(var):
         var.set(path)
 
 
-def main():
-    root = tk.Tk()
-    root.title("SkyReels Launcher")
+from ttkthemes import ThemedTk
 
-    script_var = tk.StringVar(value="Standard Generation")
-    model_var = tk.StringVar(value=MODEL_OPTIONS[0])
-    image_var = tk.StringVar()
-    res_var = tk.StringVar(value="540P")
-    frames_var = tk.StringVar(value="97")
-    guidance_var = tk.StringVar(value="6.0")
-    outdir_var = tk.StringVar(value="video_out")
-    enhancer_var = tk.BooleanVar()
-    shift_var = tk.StringVar(value="8.0")
-    fps_var = tk.StringVar(value="24")
-    seed_var = tk.StringVar()
-    offload_var = tk.BooleanVar()
-    use_usp_var = tk.BooleanVar()
-    teacache_var = tk.BooleanVar()
-    teacache_thresh_var = tk.StringVar(value="0.2")
-    use_ret_steps_var = tk.BooleanVar()
-    video_path_var = tk.StringVar()
-    end_image_var = tk.StringVar()
-    ar_step_var = tk.StringVar(value="0")
-    base_frames_var = tk.StringVar(value="97")
-    overlap_history_var = tk.StringVar()
-    addnoise_var = tk.StringVar(value="0")
-    causal_block_size_var = tk.StringVar(value="1")
+class SkyReelsApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("SkyReels Launcher")
 
-    ttk.Label(root, text="Script").grid(row=0, column=0, sticky="w")
-    ttk.Combobox(root, textvariable=script_var, values=list(SCRIPTS.keys()), width=30).grid(
-        row=0, column=1, sticky="ew"
-    )
+        self.theme_var = tk.StringVar(value="equilux")
+        self.root.set_theme(self.theme_var.get())
 
-    ttk.Label(root, text="Model").grid(row=1, column=0, sticky="w")
-    ttk.Combobox(root, textvariable=model_var, values=MODEL_OPTIONS, width=60).grid(row=1, column=1, sticky="ew")
+        self.script_var = tk.StringVar(value="Standard Generation")
+        self.model_var = tk.StringVar(value=MODEL_OPTIONS[0])
+        self.image_var = tk.StringVar()
+        self.res_var = tk.StringVar(value="540P")
+        self.frames_var = tk.StringVar(value="97")
+        self.guidance_var = tk.StringVar(value="6.0")
+        self.outdir_var = tk.StringVar(value="video_out")
+        self.enhancer_var = tk.BooleanVar()
+        self.prompt_enhancer_model_size_var = tk.StringVar(value="small")
+        self.shift_var = tk.StringVar(value="8.0")
+        self.fps_var = tk.StringVar(value="24")
+        self.seed_var = tk.StringVar()
+        self.offload_var = tk.BooleanVar()
+        self.use_usp_var = tk.BooleanVar()
+        self.teacache_var = tk.BooleanVar()
+        self.teacache_thresh_var = tk.StringVar(value="0.2")
+        self.use_ret_steps_var = tk.BooleanVar()
+        self.video_path_var = tk.StringVar()
+        self.end_image_var = tk.StringVar()
+        self.ar_step_var = tk.StringVar(value="0")
+        self.base_frames_var = tk.StringVar(value="97")
+        self.overlap_history_var = tk.StringVar()
+        self.addnoise_var = tk.StringVar(value="0")
+        self.causal_block_size_var = tk.StringVar(value="1")
 
-    ttk.Label(root, text="Prompt").grid(row=2, column=0, sticky="nw")
-    prompt_widget = scrolledtext.ScrolledText(root, width=60, height=4)
-    prompt_widget.grid(row=2, column=1, sticky="ew")
+        self.create_widgets()
 
-    ttk.Label(root, text="Image").grid(row=3, column=0, sticky="w")
-    img_entry = tk.Entry(root, textvariable=image_var, width=50)
-    img_entry.grid(row=3, column=1, sticky="w")
-    ttk.Button(root, text="Browse", command=lambda: browse_image(image_var)).grid(row=3, column=2, sticky="w")
+    def create_widgets(self):
+        main_frame = ttk.LabelFrame(self.root, text="Main Options")
+        main_frame.grid(row=0, column=0, columnspan=3, sticky="ew", pady=5, padx=5)
 
-    ttk.Label(root, text="Resolution").grid(row=4, column=0, sticky="w")
-    ttk.Combobox(root, textvariable=res_var, values=["540P", "720P"], width=10).grid(row=4, column=1, sticky="w")
+        ttk.Label(main_frame, text="Script").grid(row=0, column=0, sticky="w")
+        ttk.Combobox(main_frame, textvariable=self.script_var, values=list(SCRIPTS.keys()), width=30).grid(
+            row=0, column=1, sticky="ew"
+        )
 
-    ttk.Label(root, text="Frames").grid(row=5, column=0, sticky="w")
-    tk.Entry(root, textvariable=frames_var, width=10).grid(row=5, column=1, sticky="w")
+        ttk.Label(main_frame, text="Model").grid(row=1, column=0, sticky="w")
+        ttk.Combobox(main_frame, textvariable=self.model_var, values=MODEL_OPTIONS, width=60).grid(
+            row=1, column=1, sticky="ew"
+        )
 
-    ttk.Label(root, text="Guidance").grid(row=6, column=0, sticky="w")
-    tk.Entry(root, textvariable=guidance_var, width=10).grid(row=6, column=1, sticky="w")
+        ttk.Label(main_frame, text="Prompt").grid(row=2, column=0, sticky="nw")
+        self.prompt_widget = scrolledtext.ScrolledText(main_frame, width=60, height=4)
+        self.prompt_widget.grid(row=2, column=1, sticky="ew")
 
-    ttk.Label(root, text="Output Dir").grid(row=7, column=0, sticky="w")
-    out_entry = tk.Entry(root, textvariable=outdir_var, width=50)
-    out_entry.grid(row=7, column=1, sticky="w")
-    ttk.Button(root, text="Browse", command=lambda: browse_output(outdir_var)).grid(row=7, column=2, sticky="w")
+        ttk.Label(main_frame, text="Image").grid(row=3, column=0, sticky="w")
+        img_entry = tk.Entry(main_frame, textvariable=self.image_var, width=50)
+        img_entry.grid(row=3, column=1, sticky="w")
+        ttk.Button(main_frame, text="Browse", command=lambda: browse_image(self.image_var)).grid(
+            row=3, column=2, sticky="w"
+        )
 
-    enhancer_frame = ttk.Frame(root)
-    enhancer_frame.grid(row=8, column=0, columnspan=2, sticky="w")
-    ttk.Checkbutton(enhancer_frame, text="Use Prompt Enhancer", variable=enhancer_var).pack(side="left")
+        ttk.Label(main_frame, text="Resolution").grid(row=4, column=0, sticky="w")
+        ttk.Combobox(main_frame, textvariable=self.res_var, values=["540P", "720P"], width=10).grid(
+            row=4, column=1, sticky="w"
+        )
 
-    prompt_enhancer_model_size_var = tk.StringVar(value="small")
-    ttk.Label(enhancer_frame, text="Model Size:").pack(side="left", padx=(10, 0))
-    ttk.Combobox(enhancer_frame, textvariable=prompt_enhancer_model_size_var, values=["small", "large"], width=10).pack(
-        side="left"
-    )
+        ttk.Label(main_frame, text="Frames").grid(row=5, column=0, sticky="w")
+        tk.Entry(main_frame, textvariable=self.frames_var, width=10).grid(row=5, column=1, sticky="w")
 
-    extra_frame = ttk.LabelFrame(root, text="Common Options")
-    extra_frame.grid(row=9, column=0, columnspan=3, sticky="ew", pady=5)
+        ttk.Label(main_frame, text="Guidance").grid(row=6, column=0, sticky="w")
+        tk.Entry(main_frame, textvariable=self.guidance_var, width=10).grid(row=6, column=1, sticky="w")
 
-    ttk.Label(extra_frame, text="Shift").grid(row=0, column=0, sticky="w")
-    tk.Entry(extra_frame, textvariable=shift_var, width=10).grid(row=0, column=1, sticky="w")
+        ttk.Label(main_frame, text="Output Dir").grid(row=7, column=0, sticky="w")
+        out_entry = tk.Entry(main_frame, textvariable=self.outdir_var, width=50)
+        out_entry.grid(row=7, column=1, sticky="w")
+        ttk.Button(main_frame, text="Browse", command=lambda: browse_output(self.outdir_var)).grid(
+            row=7, column=2, sticky="w"
+        )
 
-    ttk.Label(extra_frame, text="FPS").grid(row=0, column=2, sticky="w")
-    tk.Entry(extra_frame, textvariable=fps_var, width=10).grid(row=0, column=3, sticky="w")
+        enhancer_frame = ttk.Frame(main_frame)
+        enhancer_frame.grid(row=8, column=0, columnspan=2, sticky="w")
+        ttk.Checkbutton(enhancer_frame, text="Use Prompt Enhancer", variable=self.enhancer_var).pack(side="left")
 
-    ttk.Label(extra_frame, text="Seed").grid(row=1, column=0, sticky="w")
-    tk.Entry(extra_frame, textvariable=seed_var, width=10).grid(row=1, column=1, sticky="w")
+        ttk.Label(enhancer_frame, text="Model Size:").pack(side="left", padx=(10, 0))
+        ttk.Combobox(
+            enhancer_frame, textvariable=self.prompt_enhancer_model_size_var, values=["small", "large"], width=10
+        ).pack(side="left")
 
-    ttk.Checkbutton(extra_frame, text="Offload", variable=offload_var).grid(row=1, column=2, sticky="w")
-    ttk.Checkbutton(extra_frame, text="Use USP", variable=use_usp_var).grid(row=1, column=3, sticky="w")
+        extra_frame = ttk.LabelFrame(self.root, text="Common Options")
+        extra_frame.grid(row=1, column=0, columnspan=3, sticky="ew", pady=5, padx=5)
 
-    ttk.Checkbutton(extra_frame, text="Teacache", variable=teacache_var).grid(row=2, column=0, sticky="w")
-    ttk.Label(extra_frame, text="Thresh").grid(row=2, column=1, sticky="w")
-    tk.Entry(extra_frame, textvariable=teacache_thresh_var, width=6).grid(row=2, column=2, sticky="w")
-    ttk.Checkbutton(extra_frame, text="Use Ret Steps", variable=use_ret_steps_var).grid(row=2, column=3, sticky="w")
+        ttk.Label(extra_frame, text="Shift").grid(row=0, column=0, sticky="w")
+        tk.Entry(extra_frame, textvariable=self.shift_var, width=10).grid(row=0, column=1, sticky="w")
 
-    df_frame = ttk.LabelFrame(root, text="Diffusion Forcing")
-    df_frame.grid(row=10, column=0, columnspan=3, sticky="ew", pady=5)
+        ttk.Label(extra_frame, text="FPS").grid(row=0, column=2, sticky="w")
+        tk.Entry(extra_frame, textvariable=self.fps_var, width=10).grid(row=0, column=3, sticky="w")
 
-    ttk.Label(df_frame, text="Video Path").grid(row=0, column=0, sticky="w")
-    video_entry = tk.Entry(df_frame, textvariable=video_path_var, width=40)
-    video_entry.grid(row=0, column=1, sticky="w")
-    ttk.Button(df_frame, text="Browse", command=lambda: browse_image(video_path_var)).grid(row=0, column=2, sticky="w")
+        ttk.Label(extra_frame, text="Seed").grid(row=1, column=0, sticky="w")
+        tk.Entry(extra_frame, textvariable=self.seed_var, width=10).grid(row=1, column=1, sticky="w")
 
-    ttk.Label(df_frame, text="End Image").grid(row=1, column=0, sticky="w")
-    end_entry = tk.Entry(df_frame, textvariable=end_image_var, width=40)
-    end_entry.grid(row=1, column=1, sticky="w")
-    ttk.Button(df_frame, text="Browse", command=lambda: browse_image(end_image_var)).grid(row=1, column=2, sticky="w")
+        ttk.Checkbutton(extra_frame, text="Offload", variable=self.offload_var).grid(row=1, column=2, sticky="w")
+        ttk.Checkbutton(extra_frame, text="Use USP", variable=self.use_usp_var).grid(row=1, column=3, sticky="w")
 
-    ttk.Label(df_frame, text="AR Step").grid(row=2, column=0, sticky="w")
-    ar_step_entry = tk.Entry(df_frame, textvariable=ar_step_var, width=6)
-    ar_step_entry.grid(row=2, column=1, sticky="w")
-    ttk.Label(df_frame, text="Base Frames").grid(row=2, column=2, sticky="w")
-    base_frames_entry = tk.Entry(df_frame, textvariable=base_frames_var, width=6)
-    base_frames_entry.grid(row=2, column=3, sticky="w")
+        ttk.Checkbutton(extra_frame, text="Teacache", variable=self.teacache_var).grid(row=2, column=0, sticky="w")
+        ttk.Label(extra_frame, text="Thresh").grid(row=2, column=1, sticky="w")
+        tk.Entry(extra_frame, textvariable=self.teacache_thresh_var, width=6).grid(row=2, column=2, sticky="w")
+        ttk.Checkbutton(extra_frame, text="Use Ret Steps", variable=self.use_ret_steps_var).grid(
+            row=2, column=3, sticky="w"
+        )
 
-    ttk.Label(df_frame, text="Overlap Hist").grid(row=3, column=0, sticky="w")
-    overlap_entry = tk.Entry(df_frame, textvariable=overlap_history_var, width=6)
-    overlap_entry.grid(row=3, column=1, sticky="w")
-    ttk.Label(df_frame, text="Addnoise").grid(row=3, column=2, sticky="w")
-    addnoise_entry = tk.Entry(df_frame, textvariable=addnoise_var, width=6)
-    addnoise_entry.grid(row=3, column=3, sticky="w")
+        df_frame = ttk.LabelFrame(self.root, text="Diffusion Forcing Options")
+        df_frame.grid(row=2, column=0, columnspan=3, sticky="ew", pady=5, padx=5)
 
-    ttk.Label(df_frame, text="Causal Block").grid(row=4, column=0, sticky="w")
-    causal_entry = tk.Entry(df_frame, textvariable=causal_block_size_var, width=6)
-    causal_entry.grid(row=4, column=1, sticky="w")
+        ttk.Label(df_frame, text="Video Path").grid(row=0, column=0, sticky="w")
+        video_entry = tk.Entry(df_frame, textvariable=self.video_path_var, width=40)
+        video_entry.grid(row=0, column=1, sticky="w")
+        ttk.Button(df_frame, text="Browse", command=lambda: browse_image(self.video_path_var)).grid(
+            row=0, column=2, sticky="w"
+        )
 
-    df_widgets = [
-        video_entry,
-        end_entry,
-        ar_step_entry,
-        base_frames_entry,
-        overlap_entry,
-        addnoise_entry,
-        causal_entry,
-    ]
+        ttk.Label(df_frame, text="End Image").grid(row=1, column=0, sticky="w")
+        end_entry = tk.Entry(df_frame, textvariable=self.end_image_var, width=40)
+        end_entry.grid(row=1, column=1, sticky="w")
+        ttk.Button(df_frame, text="Browse", command=lambda: browse_image(self.end_image_var)).grid(
+            row=1, column=2, sticky="w"
+        )
 
-    def update_fields(*_):
-        state = "normal" if script_var.get() == "Diffusion Forcing" else "disabled"
-        for w in df_widgets:
+        ttk.Label(df_frame, text="AR Step").grid(row=2, column=0, sticky="w")
+        ar_step_entry = tk.Entry(df_frame, textvariable=self.ar_step_var, width=6)
+        ar_step_entry.grid(row=2, column=1, sticky="w")
+        ttk.Label(df_frame, text="Base Frames").grid(row=2, column=2, sticky="w")
+        base_frames_entry = tk.Entry(df_frame, textvariable=self.base_frames_var, width=6)
+        base_frames_entry.grid(row=2, column=3, sticky="w")
+
+        ttk.Label(df_frame, text="Overlap Hist").grid(row=3, column=0, sticky="w")
+        overlap_entry = tk.Entry(df_frame, textvariable=self.overlap_history_var, width=6)
+        overlap_entry.grid(row=3, column=1, sticky="w")
+        ttk.Label(df_frame, text="Addnoise").grid(row=3, column=2, sticky="w")
+        addnoise_entry = tk.Entry(df_frame, textvariable=self.addnoise_var, width=6)
+        addnoise_entry.grid(row=3, column=3, sticky="w")
+
+        ttk.Label(df_frame, text="Causal Block").grid(row=4, column=0, sticky="w")
+        causal_entry = tk.Entry(df_frame, textvariable=self.causal_block_size_var, width=6)
+        causal_entry.grid(row=4, column=1, sticky="w")
+
+        self.df_widgets = [
+            video_entry,
+            end_entry,
+            ar_step_entry,
+            base_frames_entry,
+            overlap_entry,
+            addnoise_entry,
+            causal_entry,
+        ]
+
+        self.script_var.trace_add("write", self.update_fields)
+        self.update_fields()
+
+        self.output = scrolledtext.ScrolledText(self.root, width=80, height=20)
+        self.output.grid(row=12, column=0, columnspan=4, pady=5)
+
+        try:
+            import diffusers  # noqa: F401
+            import decord  # noqa: F401
+            packages_installed = True
+        except Exception:
+            packages_installed = False
+
+        button_state = "normal" if packages_installed else "disabled"
+
+        self.run_button = ttk.Button(
+            self.root,
+            text="Run",
+            command=self.run_generation,
+            state=button_state,
+        )
+        self.run_button.grid(row=11, column=1, pady=5)
+
+        self.cancel_button = ttk.Button(
+            self.root,
+            text="Cancel",
+            command=self.cancel_process,
+            state="disabled",
+        )
+        self.cancel_button.grid(row=11, column=2, pady=5)
+
+        self.enhancer_button = ttk.Button(
+            self.root,
+            text="Prompt Enhancer",
+            command=lambda: open_prompt_enhancer(self.prompt_widget),
+            state=button_state,
+        )
+        self.enhancer_button.grid(row=11, column=2, pady=5)
+
+        self.caption_button = ttk.Button(
+            self.root,
+            text="Captioner",
+            command=open_captioner,
+            state=button_state,
+        )
+        self.caption_button.grid(row=11, column=3, pady=5)
+
+        ttk.Button(
+            self.root,
+            text="Install Dependencies",
+            command=lambda: install_deps(self.output, self.run_button, self.enhancer_button, self.caption_button),
+        ).grid(row=11, column=0, pady=5)
+
+        ttk.Button(self.root, text="Quit", command=self.root.destroy).grid(row=11, column=4, pady=5)
+
+        self.create_theme_menu()
+
+    def create_theme_menu(self):
+        menubar = tk.Menu(self.root)
+        self.root.config(menu=menubar)
+
+        theme_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Theme", menu=theme_menu)
+
+        for theme in sorted(self.root.get_themes()):
+            theme_menu.add_radiobutton(label=theme, variable=self.theme_var, command=self.set_theme)
+
+        theme_menu.add_separator()
+        theme_menu.add_checkbutton(label="Dark Mode", onvalue="equilux", offvalue="arc", variable=self.theme_var, command=self.set_theme)
+
+    def set_theme(self):
+        self.root.set_theme(self.theme_var.get())
+
+    def update_fields(self, *_):
+        state = "normal" if self.script_var.get() == "Diffusion Forcing" else "disabled"
+        for w in self.df_widgets:
             w.configure(state=state)
 
-    script_var.trace_add("write", update_fields)
-    update_fields()
+    def run_generation(self):
+        self.run_button.config(state="disabled")
+        self.cancel_button.config(state="normal")
+        run_generation(
+            self.script_var,
+            self.model_var,
+            self.prompt_widget,
+            self.image_var,
+            self.res_var,
+            self.frames_var,
+            self.guidance_var,
+            self.outdir_var,
+            self.enhancer_var,
+            self.prompt_enhancer_model_size_var,
+            self.shift_var,
+            self.fps_var,
+            self.seed_var,
+            self.offload_var,
+            self.use_usp_var,
+            self.teacache_var,
+            self.teacache_thresh_var,
+            self.use_ret_steps_var,
+            self.video_path_var,
+            self.end_image_var,
+            self.ar_step_var,
+            self.base_frames_var,
+            self.overlap_history_var,
+            self.addnoise_var,
+            self.causal_block_size_var,
+            self.output,
+            self,
+        )
 
-    output = scrolledtext.ScrolledText(root, width=80, height=20)
-    output.grid(row=12, column=0, columnspan=4, pady=5)
+    def cancel_process(self):
+        if hasattr(self, "process") and self.process.poll() is None:
+            self.process.terminate()
+            self.output.insert(tk.END, "\nProcess cancelled by user.\n")
+            self.cancel_button.config(state="disabled")
+            self.run_button.config(state="normal")
 
-    # Determine if required packages are already installed so the buttons can be
-    # enabled on launch without forcing the user to click "Install Dependencies"
-    try:
-        import diffusers  # noqa: F401
-        import decord  # noqa: F401
-        packages_installed = True
-    except Exception:
-        packages_installed = False
 
-    button_state = "normal" if packages_installed else "disabled"
-
-    run_button = ttk.Button(
-        root,
-        text="Run",
-        command=lambda: run_generation(
-            script_var,
-            model_var,
-            prompt_widget,
-            image_var,
-            res_var,
-            frames_var,
-            guidance_var,
-            outdir_var,
-            enhancer_var,
-            prompt_enhancer_model_size_var,
-            shift_var,
-            fps_var,
-            seed_var,
-            offload_var,
-            use_usp_var,
-            teacache_var,
-            teacache_thresh_var,
-            use_ret_steps_var,
-            video_path_var,
-            end_image_var,
-            ar_step_var,
-            base_frames_var,
-            overlap_history_var,
-            addnoise_var,
-            causal_block_size_var,
-            output,
-        ),
-        state=button_state,
-    )
-    run_button.grid(row=11, column=1, pady=5)
-
-    enhancer_button = ttk.Button(
-        root,
-        text="Prompt Enhancer",
-        command=lambda: open_prompt_enhancer(prompt_widget),
-        state=button_state,
-    )
-    enhancer_button.grid(row=11, column=2, pady=5)
-
-    caption_button = ttk.Button(
-        root,
-        text="Captioner",
-        command=open_captioner,
-        state=button_state,
-    )
-    caption_button.grid(row=11, column=3, pady=5)
-
-    ttk.Button(
-        root,
-        text="Install Dependencies",
-        command=lambda: install_deps(output, run_button, enhancer_button, caption_button),
-    ).grid(row=11, column=0, pady=5)
-
-    ttk.Button(root, text="Quit", command=root.destroy).grid(row=11, column=4, pady=5)
-
+def main():
+    root = ThemedTk(theme="equilux")
+    app = SkyReelsApp(root)
     root.mainloop()
 
 
