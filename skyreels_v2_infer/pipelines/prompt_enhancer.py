@@ -1,4 +1,5 @@
 import argparse
+import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 sys_prompt = """
@@ -13,7 +14,7 @@ Transform the short prompt into a detailed video-generation caption using this s
 Pattern Summary from Examples:
 [Shot Type] of [Subject+Action] + [Detailed Subject Description] + [Environmental Context] + [Lighting Conditions] + [Camera Movement]
 
-​One case: 
+​One case:
 Short prompt: a person is playing football
 Long prompt: Medium shot of a young athlete in a red jersey sprinting across a muddy field, dribbling a soccer ball with precise footwork. The player glances toward the goalpost, adjusts their stance, and kicks the ball forcefully into the net. Raindrops fall lightly, creating reflections under stadium floodlights. The camera follows the ball’s trajectory in a smooth pan.
 
@@ -22,44 +23,66 @@ Note: If the subject is stationary, incorporate camera movement to ensure the ge
 ​​Now expand this short prompt:​​ [{}]. Please only output the final long prompt in English.
 """
 
+ENHANCER_MODEL_CONFIG = {
+    "small": "Qwen/Qwen2.5-7B-Instruct",
+    "large": "Qwen/Qwen2.5-32B-Instruct",
+}
+
+
 class PromptEnhancer:
-    def __init__(self, model_name="Qwen/Qwen2.5-32B-Instruct"):
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            torch_dtype="auto",
-            device_map="cuda:0",
-        )
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+    def __init__(self, model_size="small", device="cuda" if torch.cuda.is_available() else "cpu"):
+        model_name = ENHANCER_MODEL_CONFIG[model_size]
+        self.device = device
+        try:
+            self.model = AutoModelForCausalLM.from_pretrained(
+                model_name,
+                torch_dtype="auto",
+                device_map=self.device,
+            )
+            self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        except Exception as e:
+            raise RuntimeError(f"Failed to load model {model_name}: {e}")
 
     def __call__(self, prompt):
         prompt = prompt.strip()
         prompt = sys_prompt.format(prompt)
         messages = [
             {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": prompt}
+            {"role": "user", "content": prompt},
         ]
         text = self.tokenizer.apply_chat_template(
-            messages,
-            tokenize=False,
-            add_generation_prompt=True
+            messages, tokenize=False, add_generation_prompt=True
         )
         model_inputs = self.tokenizer([text], return_tensors="pt").to(self.model.device)
-        generated_ids = self.model.generate(
-            **model_inputs,
-            max_new_tokens=2048,
-        )   
-        generated_ids = [
-            output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
-        ]
-        rewritten_prompt = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
-        return rewritten_prompt
+        try:
+            generated_ids = self.model.generate(
+                **model_inputs,
+                max_new_tokens=2048,
+            )
+            generated_ids = [
+                output_ids[len(input_ids) :]
+                for input_ids, output_ids in zip(
+                    model_inputs.input_ids, generated_ids
+                )
+            ]
+            rewritten_prompt = self.tokenizer.batch_decode(
+                generated_ids, skip_special_tokens=True
+            )[0]
+            return rewritten_prompt
+        except Exception as e:
+            return f"Error during prompt enhancement: {e}"
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--prompt", type=str, default="In a still frame, a stop sign")
+    parser.add_argument("--model_size", type=str, default="small", choices=["small", "large"])
     args = parser.parse_args()
 
-    prompt_enhancer = PromptEnhancer()
-    enhanced_prompt = prompt_enhancer(args.prompt)
-    print(f'Original prompt: {args.prompt}')
-    print(f'Enhanced prompt: {enhanced_prompt}')
+    try:
+        prompt_enhancer = PromptEnhancer(model_size=args.model_size)
+        enhanced_prompt = prompt_enhancer(args.prompt)
+        print(f"Original prompt: {args.prompt}")
+        print(f"Enhanced prompt: {enhanced_prompt}")
+    except RuntimeError as e:
+        print(e)

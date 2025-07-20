@@ -49,7 +49,7 @@ def install_deps(output):
 
 
 def run_generation(
-    script_var, model_var, prompt_widget, image_var, res_var, frames_var, guidance_var, outdir_var, enhancer_var, output
+    script_var, model_var, prompt_widget, image_var, res_var, frames_var, guidance_var, outdir_var, enhancer_var, prompt_enhancer_model_size_var, output
 ):
     script_name = SCRIPTS[script_var.get()]
     cmd = [sys.executable, os.path.join(PROJECT_ROOT, script_name)]
@@ -70,12 +70,13 @@ def run_generation(
         cmd.extend(["--prompt", prompt_text])
     if enhancer_var.get():
         cmd.append("--prompt_enhancer")
+        cmd.extend(["--prompt_enhancer_model_size", prompt_enhancer_model_size_var.get()])
 
     output.delete(1.0, tk.END)
     threaded(cmd, output)
 
 
-def run_prompt_enhancer(prompt_widget, output_widget):
+def run_prompt_enhancer(prompt_widget, output_widget, model_size_var, status_var):
     """Run the standalone prompt enhancer script with the given prompt."""
     prompt_text = prompt_widget.get("1.0", "end").strip()
     if not prompt_text:
@@ -83,12 +84,35 @@ def run_prompt_enhancer(prompt_widget, output_widget):
         output_widget.see(tk.END)
         return
 
+    model_size = model_size_var.get()
     script_path = os.path.join(
         PROJECT_ROOT, "skyreels_v2_infer", "pipelines", "prompt_enhancer.py"
     )
-    cmd = [sys.executable, script_path, "--prompt", prompt_text]
+    cmd = [sys.executable, script_path, "--prompt", prompt_text, "--model_size", model_size]
     output_widget.delete(1.0, tk.END)
-    threaded(cmd, output_widget)
+
+    def update_status(message):
+        status_var.set(message)
+        output_widget.insert(tk.END, message + "\n")
+        output_widget.see(tk.END)
+
+    def run_and_update():
+        update_status(f"Loading {model_size} model...")
+        process = subprocess.Popen(
+            cmd,
+            cwd=PROJECT_ROOT,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        for line in process.stdout:
+            output_widget.insert(tk.END, line)
+            output_widget.see(tk.END)
+        process.wait()
+        update_status(f"Finished with exit code {process.returncode}")
+
+    thread = threading.Thread(target=run_and_update)
+    thread.start()
 
 
 def open_prompt_enhancer(prompt_widget):
@@ -96,17 +120,34 @@ def open_prompt_enhancer(prompt_widget):
     win = tk.Toplevel()
     win.title("Prompt Enhancer")
 
-    input_box = scrolledtext.ScrolledText(win, width=60, height=4)
-    input_box.pack(padx=5, pady=5, fill="both")
+    model_size_var = tk.StringVar(value="small")
+    status_var = tk.StringVar(value="Idle")
+
+    main_frame = ttk.Frame(win)
+    main_frame.pack(padx=10, pady=10, fill="both", expand=True)
+
+    top_frame = ttk.Frame(main_frame)
+    top_frame.pack(fill="x", expand=True)
+
+    ttk.Label(top_frame, text="Prompt:").pack(side="left", padx=(0, 5))
+    input_box = scrolledtext.ScrolledText(top_frame, width=60, height=4)
+    input_box.pack(side="left", fill="x", expand=True)
     input_box.insert(tk.END, prompt_widget.get("1.0", "end").strip())
 
-    output_box = scrolledtext.ScrolledText(win, width=80, height=10)
-    output_box.pack(padx=5, pady=5, fill="both")
+    ttk.Label(top_frame, text="Model:").pack(side="left", padx=(10, 5))
+    model_menu = ttk.Combobox(top_frame, textvariable=model_size_var, values=["small", "large"], width=10)
+    model_menu.pack(side="left")
+
+    output_box = scrolledtext.ScrolledText(main_frame, width=80, height=10)
+    output_box.pack(pady=5, fill="both", expand=True)
+
+    status_bar = ttk.Label(main_frame, textvariable=status_var, relief=tk.SUNKEN, anchor="w")
+    status_bar.pack(side="bottom", fill="x")
 
     ttk.Button(
-        win,
-        text="Start",
-        command=lambda: run_prompt_enhancer(input_box, output_box),
+        main_frame,
+        text="Enhance Prompt",
+        command=lambda: run_prompt_enhancer(input_box, output_box, model_size_var, status_var),
     ).pack(pady=5)
 
 
@@ -167,9 +208,14 @@ def main():
     out_entry.grid(row=7, column=1, sticky="w")
     ttk.Button(root, text="Browse", command=lambda: browse_output(outdir_var)).grid(row=7, column=2, sticky="w")
 
-    ttk.Checkbutton(root, text="Use Prompt Enhancer", variable=enhancer_var).grid(
-        row=8, column=0, columnspan=2, sticky="w"
-    )
+    enhancer_frame = ttk.Frame(root)
+    enhancer_frame.grid(row=8, column=0, columnspan=2, sticky="w")
+    ttk.Checkbutton(enhancer_frame, text="Use Prompt Enhancer", variable=enhancer_var).pack(side="left")
+
+    prompt_enhancer_model_size_var = tk.StringVar(value="small")
+    ttk.Label(enhancer_frame, text="Model Size:").pack(side="left", padx=(10, 0))
+    ttk.Combobox(enhancer_frame, textvariable=prompt_enhancer_model_size_var, values=["small", "large"], width=10).pack(side="left")
+
     output = scrolledtext.ScrolledText(root, width=80, height=20)
     output.grid(row=10, column=0, columnspan=4, pady=5)
 
@@ -187,6 +233,7 @@ def main():
             guidance_var,
             outdir_var,
             enhancer_var,
+            prompt_enhancer_model_size_var,
             output,
         ),
     ).grid(row=9, column=1, pady=5)
