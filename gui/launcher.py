@@ -43,7 +43,7 @@ def threaded(cmd, text_widget):
     thread.start()
 
 
-def install_deps(output, run_button, enhancer_button):
+def install_deps(output, run_button, enhancer_button, caption_button):
     output.insert(tk.END, "Installing dependencies...\n")
     output.see(tk.END)
 
@@ -64,6 +64,7 @@ def install_deps(output, run_button, enhancer_button):
             output.insert(tk.END, "\nDependencies installed successfully.\n")
             run_button.config(state="normal")
             enhancer_button.config(state="normal")
+            caption_button.config(state="normal")
         else:
             output.insert(tk.END, f"\nFailed to install dependencies. Exit code: {process.returncode}\n")
 
@@ -225,6 +226,118 @@ def open_prompt_enhancer(prompt_widget):
         text="Enhance Prompt",
         command=lambda: run_prompt_enhancer(input_box, output_box, model_size_var, status_var),
     ).pack(pady=5)
+
+
+def open_captioner():
+    """Open a window to run SkyCaptioner scripts."""
+    win = tk.Toplevel()
+    win.title("SkyCaptioner")
+
+    notebook = ttk.Notebook(win)
+    notebook.pack(padx=10, pady=10, fill="both", expand=True)
+
+    # Structured Caption Tab
+    struct_tab = ttk.Frame(notebook)
+    notebook.add(struct_tab, text="Structured Caption")
+
+    sc_model_var = tk.StringVar()
+    sc_video_var = tk.StringVar()
+    sc_csv_var = tk.StringVar()
+    sc_tp_var = tk.StringVar(value="2")
+
+    ttk.Label(struct_tab, text="Model Path").grid(row=0, column=0, sticky="w")
+    sc_model_entry = tk.Entry(struct_tab, textvariable=sc_model_var, width=50)
+    sc_model_entry.grid(row=0, column=1, sticky="w")
+    ttk.Button(struct_tab, text="Browse", command=lambda: browse_image(sc_model_var)).grid(row=0, column=2, sticky="w")
+
+    ttk.Label(struct_tab, text="Video File").grid(row=1, column=0, sticky="w")
+    sc_video_entry = tk.Entry(struct_tab, textvariable=sc_video_var, width=50)
+    sc_video_entry.grid(row=1, column=1, sticky="w")
+    ttk.Button(struct_tab, text="Browse", command=lambda: browse_image(sc_video_var)).grid(row=1, column=2, sticky="w")
+
+    ttk.Label(struct_tab, text="CSV File").grid(row=2, column=0, sticky="w")
+    sc_csv_entry = tk.Entry(struct_tab, textvariable=sc_csv_var, width=50)
+    sc_csv_entry.grid(row=2, column=1, sticky="w")
+    ttk.Button(struct_tab, text="Browse", command=lambda: browse_image(sc_csv_var)).grid(row=2, column=2, sticky="w")
+
+    ttk.Label(struct_tab, text="Tensor Parallel").grid(row=3, column=0, sticky="w")
+    tk.Entry(struct_tab, textvariable=sc_tp_var, width=6).grid(row=3, column=1, sticky="w")
+
+    sc_output = scrolledtext.ScrolledText(struct_tab, width=80, height=15)
+    sc_output.grid(row=4, column=0, columnspan=3, pady=5)
+
+    def run_struct():
+        sc_output.delete(1.0, tk.END)
+        if sc_csv_var.get():
+            out_csv = os.path.splitext(sc_csv_var.get())[0] + "_struct_caption.csv"
+            script_path = os.path.join(PROJECT_ROOT, "skycaptioner_v1", "scripts", "vllm_struct_caption.py")
+            cmd = [sys.executable, script_path, "--input_csv", sc_csv_var.get(), "--out_csv", out_csv, "--model_path", sc_model_var.get(), "--tp", sc_tp_var.get()]
+            threaded(cmd, sc_output)
+        elif sc_video_var.get():
+            from skycaptioner_v1.scripts.gradio_struct_caption import StructCaptioner
+            try:
+                cap = StructCaptioner(sc_model_var.get(), int(sc_tp_var.get()))
+                result = cap(sc_video_var.get())
+                sc_output.insert(tk.END, result)
+            except Exception as e:
+                sc_output.insert(tk.END, str(e))
+        else:
+            sc_output.insert(tk.END, "Please provide a video or CSV file\n")
+
+    ttk.Button(struct_tab, text="Run", command=run_struct).grid(row=5, column=1, pady=5)
+
+    # Fusion Caption Tab
+    fusion_tab = ttk.Frame(notebook)
+    notebook.add(fusion_tab, text="Caption Fusion")
+
+    fc_model_var = tk.StringVar()
+    fc_csv_var = tk.StringVar()
+    fc_tp_var = tk.StringVar(value="2")
+    fc_task_var = tk.StringVar(value="t2v")
+
+    ttk.Label(fusion_tab, text="Model Path").grid(row=0, column=0, sticky="w")
+    fc_model_entry = tk.Entry(fusion_tab, textvariable=fc_model_var, width=50)
+    fc_model_entry.grid(row=0, column=1, sticky="w")
+    ttk.Button(fusion_tab, text="Browse", command=lambda: browse_image(fc_model_var)).grid(row=0, column=2, sticky="w")
+
+    ttk.Label(fusion_tab, text="Input CSV").grid(row=1, column=0, sticky="w")
+    fc_csv_entry = tk.Entry(fusion_tab, textvariable=fc_csv_var, width=50)
+    fc_csv_entry.grid(row=1, column=1, sticky="w")
+    ttk.Button(fusion_tab, text="Browse", command=lambda: browse_image(fc_csv_var)).grid(row=1, column=2, sticky="w")
+
+    ttk.Label(fusion_tab, text="Task").grid(row=2, column=0, sticky="w")
+    ttk.Combobox(fusion_tab, textvariable=fc_task_var, values=["t2v", "i2v"], width=10).grid(row=2, column=1, sticky="w")
+
+    ttk.Label(fusion_tab, text="Tensor Parallel").grid(row=3, column=0, sticky="w")
+    tk.Entry(fusion_tab, textvariable=fc_tp_var, width=6).grid(row=3, column=1, sticky="w")
+
+    fc_struct_text = scrolledtext.ScrolledText(fusion_tab, width=80, height=10)
+    fc_struct_text.grid(row=4, column=0, columnspan=3, pady=5)
+
+    fc_output = scrolledtext.ScrolledText(fusion_tab, width=80, height=10)
+    fc_output.grid(row=5, column=0, columnspan=3, pady=5)
+
+    def run_fusion():
+        fc_output.delete(1.0, tk.END)
+        if fc_csv_var.get():
+            out_csv = os.path.splitext(fc_csv_var.get())[0] + "_fusion_caption.csv"
+            script_path = os.path.join(PROJECT_ROOT, "skycaptioner_v1", "scripts", "vllm_fusion_caption.py")
+            cmd = [sys.executable, script_path, "--input_csv", fc_csv_var.get(), "--out_csv", out_csv, "--model_path", fc_model_var.get(), "--tp", fc_tp_var.get(), "--task", fc_task_var.get()]
+            threaded(cmd, fc_output)
+        else:
+            from skycaptioner_v1.scripts.gradio_fusion_caption import FusionCaptioner
+            struct_caption = fc_struct_text.get("1.0", "end").strip()
+            if not struct_caption:
+                fc_output.insert(tk.END, "Provide structural caption text or CSV file\n")
+                return
+            try:
+                cap = FusionCaptioner(fc_model_var.get(), int(fc_tp_var.get()))
+                result = cap(struct_caption, fc_task_var.get())
+                fc_output.insert(tk.END, result)
+            except Exception as e:
+                fc_output.insert(tk.END, str(e))
+
+    ttk.Button(fusion_tab, text="Run", command=run_fusion).grid(row=6, column=1, pady=5)
 
 
 def browse_image(var):
@@ -423,13 +536,21 @@ def main():
     )
     enhancer_button.grid(row=11, column=2, pady=5)
 
+    caption_button = ttk.Button(
+        root,
+        text="Captioner",
+        command=open_captioner,
+        state="disabled",
+    )
+    caption_button.grid(row=11, column=3, pady=5)
+
     ttk.Button(
         root,
         text="Install Dependencies",
-        command=lambda: install_deps(output, run_button, enhancer_button),
+        command=lambda: install_deps(output, run_button, enhancer_button, caption_button),
     ).grid(row=11, column=0, pady=5)
 
-    ttk.Button(root, text="Quit", command=root.destroy).grid(row=11, column=3, pady=5)
+    ttk.Button(root, text="Quit", command=root.destroy).grid(row=11, column=4, pady=5)
 
     root.mainloop()
 
