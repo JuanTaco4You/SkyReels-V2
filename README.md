@@ -67,7 +67,7 @@ After installing the dependencies you can launch a lightweight Tkinter
 interface for video generation:
 
 ```shell
-python gui/launcher.py
+python3 gui/launcher.py
 ```
 
 The GUI lets you choose a model, enter prompts and run either
