@@ -48,6 +48,7 @@ if __name__ == "__main__":
         default="A serene lake surrounded by towering mountains, with a few swans gracefully gliding across the water and sunlight dancing on the surface.",
     )
     parser.add_argument("--prompt_enhancer", action="store_true")
+    parser.add_argument("--prompt_enhancer_model_size", type=str, default="small", choices=["small", "large"])
     parser.add_argument("--teacache", action="store_true")
     parser.add_argument(
         "--teacache_thresh",
@@ -101,12 +102,15 @@ if __name__ == "__main__":
     prompt_input = args.prompt
     if args.prompt_enhancer and args.image is None:
         print(f"init prompt enhancer")
-        prompt_enhancer = PromptEnhancer()
-        prompt_input = prompt_enhancer(prompt_input)
-        print(f"enhanced prompt: {prompt_input}")
-        del prompt_enhancer
-        gc.collect()
-        torch.cuda.empty_cache()
+        try:
+            prompt_enhancer = PromptEnhancer(model_size=args.prompt_enhancer_model_size)
+            prompt_input = prompt_enhancer(prompt_input)
+            print(f"enhanced prompt: {prompt_input}")
+            del prompt_enhancer
+            gc.collect()
+            torch.cuda.empty_cache()
+        except RuntimeError as e:
+            print(e)
 
     if image is None:
         assert "T2V" in args.model_id, f"check model_id:{args.model_id}"
