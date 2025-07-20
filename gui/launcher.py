@@ -43,9 +43,40 @@ def threaded(cmd, text_widget):
     thread.start()
 
 
-def install_deps(output):
-    cmd = [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"]
-    threaded(cmd, output)
+def check_deps():
+    try:
+        import torch
+        import transformers
+        return True
+    except ImportError:
+        return False
+
+def install_deps(output, run_button, enhancer_button):
+    output.insert(tk.END, "Installing dependencies...\n")
+    output.see(tk.END)
+
+    def install_and_update_ui():
+        cmd = [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"]
+        process = subprocess.Popen(
+            cmd,
+            cwd=PROJECT_ROOT,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        for line in process.stdout:
+            output.insert(tk.END, line)
+            output.see(tk.END)
+        process.wait()
+        if process.returncode == 0:
+            output.insert(tk.END, "\nDependencies installed successfully.\n")
+            run_button.config(state="normal")
+            enhancer_button.config(state="normal")
+        else:
+            output.insert(tk.END, f"\nFailed to install dependencies. Exit code: {process.returncode}\n")
+
+    thread = threading.Thread(target=install_and_update_ui)
+    thread.start()
 
 
 def run_generation(
