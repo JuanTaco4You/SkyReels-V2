@@ -644,7 +644,6 @@ class SkyReelsApp:
             self.addnoise_var,
             self.causal_block_size_var,
             self.output,
-            self,
         )
 
     def cancel_process(self):
