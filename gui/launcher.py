@@ -152,20 +152,22 @@ def run_generation(
         cmd.extend(["--teacache_thresh", teacache_thresh_var.get()])
     if use_ret_steps_var.get():
         cmd.append("--use_ret_steps")
-    if video_path_var.get():
-        cmd.extend(["--video_path", video_path_var.get()])
-    if end_image_var.get():
-        cmd.extend(["--end_image", end_image_var.get()])
-    if ar_step_var.get():
-        cmd.extend(["--ar_step", ar_step_var.get()])
-    if base_frames_var.get():
-        cmd.extend(["--base_num_frames", base_frames_var.get()])
-    if overlap_history_var.get():
-        cmd.extend(["--overlap_history", overlap_history_var.get()])
-    if addnoise_var.get():
-        cmd.extend(["--addnoise_condition", addnoise_var.get()])
-    if causal_block_size_var.get():
-        cmd.extend(["--causal_block_size", causal_block_size_var.get()])
+
+    if script_name == "generate_video_df.py":
+        if video_path_var.get():
+            cmd.extend(["--video_path", video_path_var.get()])
+        if end_image_var.get():
+            cmd.extend(["--end_image", end_image_var.get()])
+        if ar_step_var.get():
+            cmd.extend(["--ar_step", ar_step_var.get()])
+        if base_frames_var.get():
+            cmd.extend(["--base_num_frames", base_frames_var.get()])
+        if overlap_history_var.get():
+            cmd.extend(["--overlap_history", overlap_history_var.get()])
+        if addnoise_var.get():
+            cmd.extend(["--addnoise_condition", addnoise_var.get()])
+        if causal_block_size_var.get():
+            cmd.extend(["--causal_block_size", causal_block_size_var.get()])
     prompt_text = prompt_widget.get("1.0", "end").strip()
     if prompt_text:
         cmd.extend(["--prompt", prompt_text])
