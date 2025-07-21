@@ -77,11 +77,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--prompt", type=str, default="In a still frame, a stop sign")
     parser.add_argument("--model_size", type=str, default="small", choices=["small", "large"])
+    parser.add_argument("--max_length", type=int, default=None)
     args = parser.parse_args()
 
     try:
         prompt_enhancer = PromptEnhancer(model_size=args.model_size)
         enhanced_prompt = prompt_enhancer(args.prompt)
+        if args.max_length and len(enhanced_prompt) > args.max_length:
+            enhanced_prompt = enhanced_prompt[: args.max_length]
         print(f"Original prompt: {args.prompt}")
         print(f"Enhanced prompt: {enhanced_prompt}")
     except RuntimeError as e:
