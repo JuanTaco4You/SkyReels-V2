@@ -94,6 +94,7 @@ def install_deps(output, run_button, enhancer_button, caption_button):
 
 
 def run_generation(
+    app,
     script_var,
     model_var,
     prompt_widget,
@@ -173,7 +174,7 @@ def run_generation(
         cmd.extend(["--prompt_enhancer_model_size", prompt_enhancer_model_size_var.get()])
 
     output.delete(1.0, tk.END)
-    threaded(cmd, output)
+    threaded(app, cmd, output)
 
 
 def run_prompt_enhancer(prompt_widget, output_widget, model_size_var, status_var, max_length_var):
@@ -618,6 +619,7 @@ class SkyReelsApp:
         self.run_button.config(state="disabled")
         self.cancel_button.config(state="normal")
         run_generation(
+            self,
             self.script_var,
             self.model_var,
             self.prompt_widget,
