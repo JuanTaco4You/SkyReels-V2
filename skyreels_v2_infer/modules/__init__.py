@@ -10,11 +10,11 @@ from .transformer import WanModel
 from .vae import WanVAE
 
 
-def download_model(model_id):
+def download_model(model_id, token=None):
     if not os.path.exists(model_id):
         from huggingface_hub import snapshot_download
 
-        model_id = snapshot_download(repo_id=model_id)
+        model_id = snapshot_download(repo_id=model_id, token=token)
     return model_id
 
 

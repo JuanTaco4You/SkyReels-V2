@@ -59,9 +59,10 @@ if __name__ == "__main__":
         "--use_ret_steps",
         action="store_true",
         help="Using Retention Steps will result in faster generation speed and better generation quality.")
+    parser.add_argument("--token", type=str, default=None, help="Hugging Face token for private models.")
     args = parser.parse_args()
 
-    args.model_id = download_model(args.model_id)
+    args.model_id = download_model(args.model_id, token=args.token)
     print("model_id:", args.model_id)
 
     assert (args.use_usp and args.seed is not None) or (not args.use_usp), "usp mode need seed"
