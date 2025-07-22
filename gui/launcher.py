@@ -10,6 +10,9 @@ from tkinter import ttk
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 MODEL_OPTIONS = [
+    "Skywork/SkyReels-V2-DF-1.3B-540P",
+    "Skywork/SkyReels-V2-I2V-1.3B-540P",
+    "Skywork/SkyReels-V2-T2V-1.3B-540P",
     "Skywork/SkyReels-V2-T2V-14B-540P",
     "Skywork/SkyReels-V2-T2V-14B-720P",
     "Skywork/SkyReels-V2-I2V-14B-540P",
@@ -405,11 +408,11 @@ class SkyReelsApp:
         self.shift_var = tk.StringVar(value="8.0")
         self.fps_var = tk.StringVar(value="24")
         self.seed_var = tk.StringVar()
-        self.offload_var = tk.BooleanVar()
+        self.offload_var = tk.BooleanVar(value=True)
         self.use_usp_var = tk.BooleanVar()
-        self.teacache_var = tk.BooleanVar()
-        self.teacache_thresh_var = tk.StringVar(value="0.2")
-        self.use_ret_steps_var = tk.BooleanVar()
+        self.teacache_var = tk.BooleanVar(value=True)
+        self.teacache_thresh_var = tk.StringVar(value="0.3")
+        self.use_ret_steps_var = tk.BooleanVar(value=True)
         self.video_path_var = tk.StringVar()
         self.end_image_var = tk.StringVar()
         self.ar_step_var = tk.StringVar(value="0")
