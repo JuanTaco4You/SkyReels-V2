@@ -10,6 +10,9 @@ from tkinter import ttk
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 MODEL_OPTIONS = [
+    "Skywork/SkyReels-V2-DF-1.3B-540P",
+    "Skywork/SkyReels-V2-I2V-1.3B-540P",
+    "Skywork/SkyReels-V2-T2V-1.3B-540P",
     "Skywork/SkyReels-V2-T2V-14B-540P",
     "Skywork/SkyReels-V2-T2V-14B-720P",
     "Skywork/SkyReels-V2-I2V-14B-540P",
@@ -493,6 +496,13 @@ class SkyReelsApp:
         ttk.Checkbutton(extra_frame, text="Use Ret Steps", variable=self.use_ret_steps_var).grid(
             row=2, column=3, sticky="w"
         )
+
+        warning_label = ttk.Label(
+            extra_frame,
+            text="Warning: 14B models and performance optimizations (Teacache, etc.) require significant VRAM.",
+            foreground="red",
+        )
+        warning_label.grid(row=3, column=0, columnspan=4, sticky="w", pady=5)
 
         df_frame = ttk.LabelFrame(self.root, text="Diffusion Forcing Options")
         df_frame.grid(row=2, column=0, columnspan=3, sticky="ew", pady=5, padx=5)

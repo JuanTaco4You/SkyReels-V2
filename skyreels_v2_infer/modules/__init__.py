@@ -28,8 +28,7 @@ def get_vae(model_path, device="cuda", weight_dtype=torch.float32) -> WanVAE:
 
 
 def get_transformer(model_path, device="cuda", weight_dtype=torch.bfloat16) -> WanModel:
-    config_path = os.path.join(model_path, "config.json")
-    transformer = WanModel.from_config(config_path).to(weight_dtype).to(device)
+    transformer = WanModel.from_pretrained(model_path, low_cpu_mem_usage=True, device_map=device, torch_dtype=weight_dtype)
 
     for file in os.listdir(model_path):
         if file.endswith(".safetensors"):
