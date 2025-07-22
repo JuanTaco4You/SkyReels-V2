@@ -408,11 +408,11 @@ class SkyReelsApp:
         self.shift_var = tk.StringVar(value="8.0")
         self.fps_var = tk.StringVar(value="24")
         self.seed_var = tk.StringVar()
-        self.offload_var = tk.BooleanVar(value=True)
+        self.offload_var = tk.BooleanVar()
         self.use_usp_var = tk.BooleanVar()
-        self.teacache_var = tk.BooleanVar(value=True)
-        self.teacache_thresh_var = tk.StringVar(value="0.3")
-        self.use_ret_steps_var = tk.BooleanVar(value=True)
+        self.teacache_var = tk.BooleanVar()
+        self.teacache_thresh_var = tk.StringVar(value="0.2")
+        self.use_ret_steps_var = tk.BooleanVar()
         self.video_path_var = tk.StringVar()
         self.end_image_var = tk.StringVar()
         self.ar_step_var = tk.StringVar(value="0")
@@ -496,6 +496,13 @@ class SkyReelsApp:
         ttk.Checkbutton(extra_frame, text="Use Ret Steps", variable=self.use_ret_steps_var).grid(
             row=2, column=3, sticky="w"
         )
+
+        warning_label = ttk.Label(
+            extra_frame,
+            text="Warning: 14B models and performance optimizations (Teacache, etc.) require significant VRAM.",
+            foreground="red",
+        )
+        warning_label.grid(row=3, column=0, columnspan=4, sticky="w", pady=5)
 
         df_frame = ttk.LabelFrame(self.root, text="Diffusion Forcing Options")
         df_frame.grid(row=2, column=0, columnspan=3, sticky="ew", pady=5, padx=5)
